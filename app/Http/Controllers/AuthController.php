@@ -122,7 +122,22 @@ class AuthController extends Controller
     {
         if(auth()->user()->role==1)
         {
-            return view('admin_page.dashboard');
+            $employees = DB::table('attendances as a')
+            ->join('employee as e', 'a.user_id', '=', 'e.employee_id')
+            ->select(
+                'e.employee_id',
+                DB::raw("CONCAT(e.first_name, ' ', e.last_name) AS employee_name"),
+                DB::raw("SUM(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out)) AS total_hours_worked"),
+                DB::raw("MONTHNAME(CURRENT_DATE()) AS present_month")
+            )
+            ->whereMonth('a.date', date('m'))
+            ->whereYear('a.date', date('Y'))
+            ->whereNotNull('a.check_in')
+            ->whereNotNull('a.check_out')
+            ->groupBy('e.employee_id', 'e.first_name', 'e.last_name')
+            ->get();
+
+            return view('admin_page.dashboard', ['employees' => $employees]);
         }
         else if(auth()->user()->role==0)
         {
@@ -232,5 +247,57 @@ class AuthController extends Controller
         {
             Attendance::create($employeeData);
         }
+        return view('admin_page.dashboard');
+    }
+
+    //payroll
+    public function countMonthlySellary()
+    {
+        return view('admin_page.paymentCount');
+    }
+    public function paymentCountResult(Request $request)
+    {
+        $year = $request->input('year');
+        $month = $request->input('month');
+        $offday = $request->input('offday');
+        $hoursPerDay = $request->input('hours_per_day');
+
+        // Query to calculate hours worked for each employee
+        $results = DB::table('attendances')
+                    ->join('employee', 'attendances.user_id', '=', 'employee.employee_id')
+                    ->select('employee.employee_id', 'employee.first_name', 'employee.last_name',
+                            DB::raw('SUM(TIMESTAMPDIFF(HOUR, check_in, check_out)) AS hours_worked'))
+                    ->whereYear('date', $year)
+                    ->whereMonth('date', $month)
+                    ->groupBy('employee.employee_id', 'employee.first_name', 'employee.last_name')
+                    ->get();
+
+        // Calculate total days in the specified month
+        $totalDaysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+
+        // Calculate overtime and salary for each employee
+        foreach ($results as $result) {
+            $overtime = $result->hours_worked - (($totalDaysInMonth - $offday) * $hoursPerDay);
+            $result->overtime = max(0, $overtime);
+            $result->salary = ($result->hours_worked + $result->overtime) * 100;
+            $result->payment_status = $this->getPaymentStatus($result->employee_id, $year, $month);
+        }
+
+        // Pass data to the view
+        return view('admin_page.paymentCountResult', compact('year', 'month', 'offday', 'hoursPerDay', 'results'));
+    }
+    private function getPaymentStatus($employee_id, $year, $month)
+    {
+        $payment = DB::table('payment_details')
+                    ->where('employee_id', $employee_id)
+                    ->where('year', $year)
+                    ->where('month', $month)
+                    ->first();
+
+        return $payment ? $payment->status : 0;
+    }
+    public function pay_monthly_bill(Request $request)
+    {
+        return view('admin_page.pay_monthly_bill');
     }
 }

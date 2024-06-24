@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
-});
+})->name('welcome_page');
 
 Route::controller(AuthController::class)->group(function () {
     Route::get('login', 'login')->name('login');
@@ -30,4 +30,10 @@ Route::controller(AuthController::class)->group(function () {
     //Attendence route
     Route::get('attendence','attendence')->name('attendence');
     Route::post('EmployeeAttendenceSave','EmployeeAttendenceSave')->name('EmployeeAttendenceSave');
+
+    //payroll
+    Route::get('countMonthlySellary','countMonthlySellary')->name('countMonthlySellary');
+    Route::post('paymentCountResult','paymentCountResult')->name('paymentCountResult');
+    Route::post('/pay_monthly_bill/{employee}','pay_monthly_bill')->name('pay_monthly_bill');
+
 });

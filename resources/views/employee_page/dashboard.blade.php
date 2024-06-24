@@ -23,20 +23,7 @@
     }
 </style>
 <main>
-    <div class="sidebar d-flex flex-column p-3">
-        <h2>Sidebar</h2>
-        <ul class="nav nav-pills flex-column mb-auto">
-            <li class="nav-item">
-                <a href="{{route('dashboard')}}" class="nav-link active" aria-current="page">Home</a>
-            </li>
-            <li>
-                <a href="{{route('employee_list')}}" class="nav-link">Employee List</a>
-            </li>
-            <li>
-                <a href="{{route('attendence')}}" class="nav-link">Attendence</a>
-            </li>
-        </ul>
-    </div>
+    @include('sidebar_layout')
     <div class="content">
         <h1>this is employee dashboard</h1>
     </div>
