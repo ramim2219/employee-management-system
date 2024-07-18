@@ -147,43 +147,52 @@ class AuthController extends Controller
     }
     public function dashboardPage()
     {
-        if(auth()->user()->role == 1)
+        // Ensure the user is authenticated before accessing their role
+        if (auth()->check()) 
         {
-            $employees = DB::table('attendances as a')
-                ->join('employee as e', 'a.user_id', '=', 'e.employee_id')
-                ->select(
-                    'e.employee_id',
-                    DB::raw("CONCAT(e.first_name, ' ', e.last_name) AS employee_name"),
-                    DB::raw("SUM(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out)) AS total_hours_worked"),
-                    DB::raw("MONTHNAME(CURRENT_DATE()) AS present_month")
-                )
-                ->whereMonth('a.date', date('m'))
-                ->whereYear('a.date', date('Y'))
-                ->whereNotNull('a.check_in')
-                ->whereNotNull('a.check_out')
-                ->groupBy('e.employee_id', 'e.first_name', 'e.last_name')
-                ->get();
+            if (auth()->user()->role == 1) 
+            {
+                $employees = DB::table('attendances as a')
+                    ->join('employee as e', 'a.user_id', '=', 'e.employee_id')
+                    ->select(
+                        'e.employee_id',
+                        DB::raw("CONCAT(e.first_name, ' ', e.last_name) AS employee_name"),
+                        DB::raw("SUM(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out)) AS total_hours_worked"),
+                        DB::raw("MONTHNAME(CURRENT_DATE()) AS present_month")
+                    )
+                    ->whereMonth('a.date', date('m'))
+                    ->whereYear('a.date', date('Y'))
+                    ->whereNotNull('a.check_in')
+                    ->whereNotNull('a.check_out')
+                    ->groupBy('e.employee_id', 'e.first_name', 'e.last_name')
+                    ->get();
 
-            return view('admin_page.dashboard', ['employees' => $employees]);
-        }
-        else if(auth()->user()->role == 0)
-        {
-            $user = Auth::user();
-            $employee = DB::table('employee')
-                ->where('user_id', $user->id)
-                ->first();
+                return view('admin_page.dashboard', ['employees' => $employees]);
+            } 
+            else if (auth()->user()->role == 0) 
+            {
+                $user = Auth::user();
+                $employee = DB::table('employee')
+                    ->where('user_id', $user->id)
+                    ->first();
                 $pos = DB::table('position')->where('id', $employee->employee_position)->first();
-            return view('employee_page.dashboard', [
-                'user' => $user,
-                'employee' => $employee,
-                'position' =>$pos,
-            ]);
-        }
-        else
+                return view('employee_page.dashboard', [
+                    'user' => $user,
+                    'employee' => $employee,
+                    'position' => $pos,
+                ]);
+            } 
+            else 
+            {
+                return redirect()->route('login');
+            }
+        } 
+        else 
         {
             return redirect()->route('login');
         }
     }
+
     public function logout()
     {
         Auth::logout();
@@ -355,15 +364,21 @@ class AuthController extends Controller
         $offday = $request->input('offday');
         $hoursPerDay = $request->input('hours_per_day');
 
-        // Query to calculate hours worked for each employee
+        // Query to calculate hours worked and get salary for each employee
         $results = DB::table('attendances')
-                    ->join('employee', 'attendances.user_id', '=', 'employee.employee_id')
-                    ->select('employee.employee_id', 'employee.first_name', 'employee.last_name',
-                            DB::raw('SUM(TIMESTAMPDIFF(HOUR, check_in, check_out)) AS hours_worked'))
-                    ->whereYear('date', $year)
-                    ->whereMonth('date', $month)
-                    ->groupBy('employee.employee_id', 'employee.first_name', 'employee.last_name')
-                    ->get();
+            ->join('employee', 'attendances.user_id', '=', 'employee.employee_id')
+            ->join('position', 'employee.employee_position', '=', 'position.id')
+            ->select(
+                'employee.employee_id',
+                'employee.first_name',
+                'employee.last_name',
+                'position.selary as salary',
+                DB::raw('SUM(TIMESTAMPDIFF(HOUR, check_in, check_out)) AS hours_worked')
+            )
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->groupBy('employee.employee_id', 'employee.first_name', 'employee.last_name', 'position.selary')
+            ->get();
 
         // Calculate total days in the specified month
         $totalDaysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
@@ -372,13 +387,14 @@ class AuthController extends Controller
         foreach ($results as $result) {
             $overtime = $result->hours_worked - (($totalDaysInMonth - $offday) * $hoursPerDay);
             $result->overtime = max(0, $overtime);
-            $result->salary = ($result->hours_worked + $result->overtime) * 100;
+            $result->salary = ($result->hours_worked + $result->overtime) * $result->salary; // Assuming $result->salary is the hourly rate
             $result->payment_status = $this->getPaymentStatus($result->employee_id, $year, $month);
         }
 
         // Pass data to the view
         return view('admin_page.paymentCountResult', compact('year', 'month', 'offday', 'hoursPerDay', 'results'));
     }
+
     private function getPaymentStatus($employee_id, $year, $month)
     {
         $payment = DB::table('payment_details')

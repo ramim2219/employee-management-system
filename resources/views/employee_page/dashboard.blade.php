@@ -6,21 +6,6 @@
         min-height: 100vh;
         font-family: Arial, sans-serif;
     }
-    .sidebar {
-        width: 250px;
-        background-color: #343a40;
-        color: #fff;
-        padding: 20px;
-    }
-    .sidebar a {
-        color: #fff;
-        text-decoration: none;
-        padding: 10px 0;
-        display: block;
-    }
-    .sidebar a:hover {
-        background-color: #495057;
-    }
     .content {
         flex-grow: 1;
         padding: 20px;
