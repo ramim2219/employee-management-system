@@ -63,6 +63,10 @@
             display: flex;
             justify-content: center;
         }
+        .sidebar .icon
+        {
+            margin-right: 5px;
+        }
         .sidebar a {
             color: #fff;
             text-decoration: none;
@@ -112,11 +116,12 @@
                             <i class="far fa-id-card icon"></i> <span class="text">Add Employee</span>
                         </a>
                     </li>
-                    <li class="{{ request()->routeIs('countMonthlySellary') ? 'active' : '' }}">
+                    <li class="{{ request()->routeIs('countMonthlySellary', 'paymentCountResult') ? 'active' : '' }}">
                         <a href="{{ route('countMonthlySellary') }}">
                             <i class="fas fa-money-check-alt icon"></i> <span class="text">Monthly Payment Count</span>
                         </a>
                     </li>
+                    
                     <li class="{{ request()->routeIs('employee_position') ? 'active' : '' }}">
                         <a href="{{ route('employee_position') }}">
                             <i class="fas fa-briefcase icon"></i> <span class="text">Add Employee Position</span>
@@ -127,13 +132,29 @@
                             <i class="fas fa-info-circle icon"></i> <span class="text">Position Details</span>
                         </a>
                     </li>
+                    <li class="{{ request()->routeIs('give_task','allAssignedTasks') ? 'active' : '' }}">
+                        <a href="{{ route('give_task') }}">
+                            <i class="fa-solid fa-list-check"></i>    <span class="text">Assign Task</span>
+                        </a>
+                    </li>
                 @elseif (auth()->user()->role == 0)
-                    <li>
-                        <a href="#">
+                    <li class="{{ request()->routeIs('payment_details') ? 'active' : '' }}">
+                        <a href="{{ route('payment_details') }}">
                             <i class="fas fa-money-bill-wave icon"></i> <span class="text">Your Payment Details</span>
                         </a>
                     </li>
+                    <li class="{{ request()->routeIs('taskShow','tasks.updateTaskStatus') ? 'active' : '' }}">
+                        <a href="{{ route('taskShow') }}">
+                            <i class="fa-solid fa-list-check"></i> <span class="text">Task show</span>
+                        </a>
+                    </li>
                 @endif
+                <li class="{{ request()->routeIs('posts.index') ? 'active' : '' }}">
+                    <a href="{{route('posts.index')}}">
+                        <i class="fa-solid fa-message"></i>
+                        <span class="text">Social </span>
+                    </a>
+                </li>
             @endauth
         </ul>
     </div>
@@ -142,7 +163,7 @@
 <script>
     function toggleSidebar() {
         document.querySelector('.sidebar').classList.toggle('collapsed');
-        document.querySelector('.sidebar').classList.toggle('expanded'); // Add expanded class
+        document.querySelector('.sidebar').classList.toggle('expanded');
     }
 </script>
 

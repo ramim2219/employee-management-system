@@ -1,10 +1,12 @@
 @extends('layout')
+
 @section('content')
 <div class="background-image"></div>
 <div class="contents">
     <h1>Welcome to Our Company...</h1>
     <p class="lead">Innovating for a brighter future.</p>
-    <a href="{{ auth()->check() ? (auth()->user()->role === null ? route('login') : (auth()->user()->role == 0 ? route('dashboard') : route('dashboard'))) : route('login') }}">
+    <a href="{{ auth()->check() ? (auth()->user()->role === null ? route('login') : (auth()->user()->role == 0 ? route('dashboard') : route('dashboard'))) : route('login') }}"
+       class="btn btn-primary btn-lg mt-3">
         Get Started
     </a>
 </div>

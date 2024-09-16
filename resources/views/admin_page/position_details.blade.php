@@ -25,12 +25,12 @@
                             <td>{{ $item->name }}</td>
                             <td>{{ $item->selary }}</td>
                             <td>
-                                <a href="#" class="text-primary">
+                                <a href="{{ route('UpdatePositionPage', $item->id) }}" class="text-primary">
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </a>
                             </td>
                             <td>
-                                <a href="#" class="text-danger delete-user">
+                                <a href="{{ route('position_Delete', $item->id) }}" class="text-danger delete-user" onclick="return confirm('Are you sure you want to delete this position?');">
                                     <i class="fa-solid fa-trash"></i>
                                 </a>
                             </td>

@@ -19,35 +19,29 @@
                 12 => "December"
             ];
         @endphp
-        <h2 class="mb-4 text-primary">Payment Status for {{ $months[$month] }}, {{ $year }}</h2>
         <div class="table-responsive">
             <table class="table table-striped table-bordered table-hover">
                 <thead class="thead-dark">
                     <tr>
-                        <th>Month</th>
                         <th>Employee ID</th>
-                        <th>Name</th>
-                        <th>Hours Worked</th>
-                        <th>Overtime</th>
-                        <th>Salary</th>
+                        <th>Employee Name</th>
+                        <th>Month</th>
+                        <th>Year</th>
+                        <th>Total Salary</th>
                         <th>Payment Status</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($results as $result)
+                    @foreach($monthlySalaries as $salary)
                     <tr>
-                        <td>{{ $month }}/{{ $year }}</td>
-                        <td>{{ $result->employee_id }}</td>
-                        <td>{{ $result->first_name }} {{ $result->last_name }}</td>
-                        <td>{{ $result->hours_worked }}</td>
-                        <td>{{ $result->overtime }}</td>
-                        <td>${{ number_format($result->salary, 2) }}</td>
+                        <td>{{ $salary->employee_id }}</td>
+                        <td>{{ $salary->employee_name }}</td>
+                        <td>{{ $months[(int)$salary->month] }}</td>
+                        <td>{{ $salary->year }}</td>
+                        <td>{{ $salary->total_salary }}</td>
                         <td class="text-center">
-                            @if($result->payment_status == 0)
-                                <form action="{{ route('pay_monthly_bill', $result->employee_id) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    <button type="submit" class="btn btn-success btn-sm">Pay Salary</button>
-                                </form>
+                            @if($salary->payment_status == 0)
+                                <button type="submit" class="btn btn-danger btn-sm">Unpaid</button>
                             @else
                                 <button type="button" class="btn btn-secondary btn-sm" disabled>Paid</button>
                             @endif

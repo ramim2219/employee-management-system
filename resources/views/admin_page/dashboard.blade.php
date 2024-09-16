@@ -6,7 +6,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
     <div class="content">
         <div class="container2">
-            <h2 class="text-center mb-4">Employee Total Hours Worked</h2>
+            <h2 class="text-center mb-4">Employee Total Hours Worked In This Month</h2>
             <canvas id="myChart" style="width:100%; max-width:800px;"></canvas>
             <script>
                 @if(isset($employees) && $employees->isNotEmpty())

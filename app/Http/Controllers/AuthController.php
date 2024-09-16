@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
+    public function make_admin()
+    {
+        return view('make_admin');
+    }
     public function signup()
     {
         return view('login_signUp_page.signup');
@@ -26,14 +30,12 @@ class AuthController extends Controller
     }
     public function employeeDetails($id)
     {
-        // Assuming you have a separate employee table
         $employee = DB::table('users')->find($id);
 
         if (!$employee) {
-            abort(404); // Handle the case where the employee is not found
+            abort(404);
         }
         $positions = Position::all();
-
         return view('login_signUp_page.employee_details', compact('employee', 'id', 'positions'));
     }
     public function employeeDetailsSave(Request $req, $id)
@@ -46,14 +48,8 @@ class AuthController extends Controller
             'image' => 'required|mimes:png,jpg,jpeg|max:3000',
             'position_id' => 'required'
         ]);
-
-        // Debugging log to check if file is being uploaded
         if ($req->hasFile('image')) {
             $path = $req->file('image')->store('images', 'public');
-            // Log the stored file path
-            // Log::info('Image Path: ' . $path);
-
-            // Create a new employee using the validated data
             $user = DB::table('employee')->insert([
                 'first_name' => $req->first_name,
                 'last_name' => $req->last_name,
@@ -65,7 +61,6 @@ class AuthController extends Controller
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now()
             ]);
-
             if ($user) {
                 return redirect()->route('dashboard')->with('success', 'Employee details saved successfully');
             }
@@ -147,7 +142,6 @@ class AuthController extends Controller
     }
     public function dashboardPage()
     {
-        // Ensure the user is authenticated before accessing their role
         if (auth()->check()) 
         {
             if (auth()->user()->role == 1) 
@@ -198,6 +192,7 @@ class AuthController extends Controller
         Auth::logout();
         return view('login_signUp_page.login');
     }
+
     // Employee Position
     public function employee_position()
     {
@@ -229,6 +224,46 @@ class AuthController extends Controller
         return view('admin_page.position_details',[
             'position' => $user2
         ]);
+    }
+    public function position_Delete(string $id)
+    {
+        $deletePosition = DB::table('position')
+                        ->where('id', $id) 
+                        ->delete();
+        if($deletePosition)
+        {
+            return redirect()->route('position_details');
+        }
+    }
+
+    // position
+    public function UpdatePositionPage(string $id)
+    {
+        $user = DB::table('position')->where('id',$id)->get();
+        return view('admin_page.UpdatePositionPage',[
+            'data'=>$user
+        ]);
+    }
+    public function UpdatePosition(Request $req,$id)
+    {
+        $user = DB::table('position')->where('id', $id)->first();
+        $req->validate([
+            'name' => 'required|string|max:50',
+            'Salary' => 'required|integer'
+        ]);
+
+        $updateData = [
+            'selary' => $req->Salary,
+            'name' => $req->name,
+            'updated_at' => now(),
+        ];
+        $user2 = DB::table('position')->where('id', $id)->update($updateData);
+
+        if ($user2) {
+            return redirect()->route('position_details')->with('success', 'Updated successfully');
+        } else {
+            return redirect()->back()->with('error', 'Update failed');
+        }
     }
     
     //employee crud
@@ -349,7 +384,7 @@ class AuthController extends Controller
                 'updated_at' => now(),
             ]);
         }
-        return redirect()->route('dashboardPage');
+        return redirect()->route('dashboard');
     }
 
     //payroll
@@ -405,8 +440,169 @@ class AuthController extends Controller
 
         return $payment ? $payment->status : 0;
     }
-    public function pay_monthly_bill(Request $request)
+    public function pay_monthly_bill(Request $request, $employeeId)
     {
-        return view('admin_page.pay_monthly_bill');
+        $employee = Employee::where('employee_id', $employeeId)->first();
+        if (!$employee) {
+            return redirect()->back()->with('error', 'Employee not found.');
+        }
+        $fullName = $employee->first_name . ' ' . $employee->last_name;
+        $phoneNumber = $employee->phone_number;
+        return view('stripe', compact('employeeId', 'fullName', 'phoneNumber'));
+    }
+
+
+
+    //task
+    public function give_task()
+    {
+        $employees = DB::table('employee')
+            ->join('position', 'employee.employee_position', '=', 'position.id')
+            ->select(
+                DB::raw("CONCAT(employee.first_name, ' ', employee.last_name) as full_name"),
+                'employee.user_id',
+                'position.name as position_name'
+            )
+            ->get();
+        return view('admin_page.give_task_page', [
+            'employees' => $employees
+        ]);
+    }
+    public function saveTask(Request $req)
+    {
+        $data = $req->validate([
+            'employee_id' => 'required',
+            'task_title' => 'required|string|max:255',
+            'task_description' => 'required|string'
+        ]);
+        DB::table('assign_task')->insert([
+            'employee_id' => $data['employee_id'],
+            'title' => $data['task_title'],
+            'description' => $data['task_description'],
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        return redirect()->back()->with('success', 'Task has been assigned successfully.');
+    }
+    public function taskShow()
+    {
+        $userId = auth()->user()->id;
+        $tasks = DB::table('assign_task')
+            ->where('employee_id', $userId)
+            ->get();
+        //dd($tasks);
+        return view('employee_page.showTask', ['tasks' => $tasks]);
+
+    }
+    public function getEmployeesByPosition($positionId)
+    {
+        $employees = Employee::where('employee_position', $positionId)->get();
+        return response()->json($employees);
+    }
+    public function updateTaskStatus($id)
+    {
+        $task = DB::table('assign_task')->where('id', $id)->first();
+        return view('employee_page.taskReport', compact('task'));
+    }
+    public function updateTask(Request $req)
+    {
+        // Validate the incoming request data
+        $req->validate([
+            'task_id' => 'required|integer',
+            'task_report' => 'required|string',
+        ]);
+
+        // Update the task using the DB facade
+        $updated = DB::table('assign_task')
+        ->where('id', $req->task_id)
+        ->update([
+            'task_report' => $req->task_report,
+            'status' => 1, // Set status to 1
+        ]);
+
+        if ($updated) {
+            // Optionally redirect or return a response
+            return redirect()->back()->with('success', 'Task updated successfully.');
+        } else {
+            // Handle the case where the task is not found or no update was made
+            return redirect()->back()->with('error', 'Task not found or no changes made.');
+        }
+    }
+    public function ApproveTask($id)
+    {
+        $task = DB::table('assign_task')->where('id', $id)->first();
+        if ($task) {
+            DB::table('assign_task')->where('id', $id)->update(['status' => 2]);
+            return redirect()->back()->with('success', 'Task approved successfully.');
+        } else {
+            return redirect()->back()->with('error', 'Task not found.');
+        }
+    }
+
+    public function CancelTask($id)
+    {
+        $task = DB::table('assign_task')->where('id', $id)->first();
+        if ($task) {
+            DB::table('assign_task')->where('id', $id)->update(['status' => 0]);
+            return redirect()->back()->with('success', 'Task canceled successfully.');
+        } else {
+            return redirect()->back()->with('error', 'Task not found.');
+        }
+    }
+
+
+    public function allAssignedTasks()
+    {
+        $tasks = DB::table('assign_task')
+            ->join('employee', 'employee.user_id', '=', 'assign_task.employee_id')
+            ->select('assign_task.*', DB::raw("CONCAT(employee.first_name, ' ', employee.last_name) AS full_name"))
+            ->get()
+            ->map(function($task) {
+                $task->created_at = Carbon::parse($task->created_at)->format('d M Y, h:i A');
+                return $task;
+            });
+
+        return view('admin_page.allAsignedTask', compact('tasks'));
+    }
+
+
+    //employee payment details 
+    public function payment_details()
+    {
+        // Fetch the employee ID based on the authenticated user
+        $employeeId = DB::table('employee as e')
+                    ->join('users as u', 'e.user_id', '=', 'u.id')
+                    ->where('u.id', auth()->user()->id)
+                    ->value('e.employee_id');
+
+        // Fetch monthly salaries
+        $monthlySalaries = DB::table('attendances as a')
+                        ->join('employee as e', 'a.user_id', '=', 'e.employee_id')
+                        ->join('position as p', 'e.employee_position', '=', 'p.id')
+                        ->select(
+                            'e.employee_id',
+                            DB::raw("CONCAT(e.first_name, ' ', e.last_name) as employee_name"),
+                            DB::raw("DATE_FORMAT(a.date, '%Y-%m') as month"),
+                            DB::raw('SUM(p.selary) as total_salary')
+                        )
+                        ->where('a.user_id', $employeeId)
+                        ->groupBy('e.employee_id', 'employee_name', 'month')
+                        ->orderBy('month', 'desc')
+                        ->get();
+
+        // Add payment status, year, and month to each record
+        $monthlySalaries = $monthlySalaries->map(function ($salary) {
+            $year = substr($salary->month, 0, 4);
+            $month = substr($salary->month, 5, 2);
+            $salary->payment_status = $this->getPaymentStatus($salary->employee_id, $year, $month);
+            $salary->year = $year;
+            $salary->month = $month;
+            return $salary;
+        });
+        // Pass to view
+        return view('employee_page.payment_details', ['monthlySalaries' => $monthlySalaries]);
+
+
+        return view('employee_page.payment_details',compact('monthlySalaries'));
     }
 }
